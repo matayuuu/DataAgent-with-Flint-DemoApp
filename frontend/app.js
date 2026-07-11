@@ -189,18 +189,6 @@ function handleStreamEvent(event, turnCtx) {
             keepTypingLast(turnCtx);
             break;
         }
-        case 'query': {
-            const group = ensureActivityGroup(turnCtx);
-            const lang = (event.language || 'sql');
-            appendActivityItem(group, {
-                title: `📊 実行クエリ (${lang.toUpperCase()})`,
-                variant: 'query',
-                bodyText: event.query || '',
-                codeLang: lang,
-            });
-            keepTypingLast(turnCtx);
-            break;
-        }
         case 'tool_result': {
             const group = ensureActivityGroup(turnCtx);
             const txt = typeof event.result === 'string'
