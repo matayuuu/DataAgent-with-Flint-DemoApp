@@ -66,10 +66,10 @@ FastAPI バックエンド  ──►  Microsoft Foundry（モデル推論）
 
 ### デモ
 
-「2025年の売上を月別で出力して」と質問すると、Fabric Data Agent が集計し、Flint がグラフを描画します。
+データについて質問すると、Fabric Data Agent が集計し、Flint がグラフを描画します。
 
 ![デモ: 月別売上の分析と可視化](docs/images/demo.gif)
 
 ## ライセンス
 
-[Apache License 2.0](LICENSE)（商用利用可）
+[Apache License 2.0](LICENSE)
