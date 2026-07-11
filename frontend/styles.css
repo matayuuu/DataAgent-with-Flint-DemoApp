@@ -339,28 +339,6 @@ textarea.input-full {
     overflow-x: auto;
 }
 
-.message.vega-message .vega-viewport {
-    width: 100%;
-    height: 420px;
-    overflow: hidden;
-    position: relative;
-    border: 1px solid #e5e5e5;
-    border-radius: calc(var(--radius) - 4px);
-    touch-action: none;
-}
-
-.message.vega-message .vega-viewport .vega-container {
-    overflow: visible;
-    will-change: transform;
-}
-
-.message.vega-message .vega-hint {
-    margin-top: 6px;
-    font-size: 11px;
-    color: #666;
-    text-align: center;
-}
-
 .message.tool-call {
     background: var(--tool-bg);
     align-self: flex-start;

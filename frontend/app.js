@@ -237,25 +237,9 @@ function appendVegaLiteMessage(spec) {
     const div = document.createElement('div');
     div.className = 'message assistant vega-message';
 
-    const isMap = isMapSpec(spec);
-
     const chartDiv = document.createElement('div');
     chartDiv.className = 'vega-container';
-
-    let viewport = null;
-    if (isMap) {
-        // Wrap maps in a pan/zoom viewport.
-        viewport = document.createElement('div');
-        viewport.className = 'vega-viewport';
-        viewport.appendChild(chartDiv);
-        div.appendChild(viewport);
-        const hint = document.createElement('div');
-        hint.className = 'vega-hint';
-        hint.textContent = 'スクロールで拡大・縮小 / ドラッグで移動 / ダブルクリックでリセット';
-        div.appendChild(hint);
-    } else {
-        div.appendChild(chartDiv);
-    }
+    div.appendChild(chartDiv);
     container.appendChild(div);
 
     if (typeof vegaEmbed === 'undefined') {
@@ -265,21 +249,22 @@ function appendVegaLiteMessage(spec) {
     }
 
     // For non-map charts, make them responsive to the container width.
-    // Maps keep their intrinsic size so pan/zoom math stays stable.
     const embedSpec = Object.assign({}, spec);
-    if (!isMap && embedSpec.width !== undefined && !embedSpec.autosize) {
+    if (embedSpec.width !== undefined && !embedSpec.autosize) {
         embedSpec.width = 'container';
+    }
+
+    // For geographic maps, strip explicit projection scale/center/translate so
+    // Vega-Lite auto-fits the projection to the actual data extent (e.g. Japan
+    // only instead of the whole globe).
+    if (isMapSpec(embedSpec)) {
+        autoFitProjection(embedSpec);
     }
 
     vegaEmbed(chartDiv, embedSpec, {
         actions: false,
         mode: 'vega-lite',
-        // SVG stays crisp when scaled via CSS transform (needed for map zoom).
-        renderer: isMap ? 'svg' : 'canvas',
-    }).then(() => {
-        if (isMap && viewport) {
-            attachPanZoom(viewport, chartDiv);
-        }
+        renderer: 'canvas',
     }).catch((e) => {
         chartDiv.textContent = `チャート描画エラー: ${e.message}`;
     });
@@ -300,57 +285,19 @@ function isMapSpec(spec) {
     return false;
 }
 
-// Add wheel-zoom (toward cursor) and drag-pan to a viewport by CSS-transforming
-// the target element. Double-click resets.
-function attachPanZoom(viewport, target) {
-    let scale = 1;
-    let tx = 0;
-    let ty = 0;
-    target.style.transformOrigin = '0 0';
-    viewport.style.cursor = 'grab';
-
-    const apply = () => {
-        target.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+// Strip explicit scale / center / translate from a Vega-Lite projection so
+// the renderer auto-fits the map to the geographic data extent.
+function autoFitProjection(spec) {
+    const strip = (proj) => {
+        if (!proj || typeof proj !== 'object') return;
+        delete proj.scale;
+        delete proj.center;
+        delete proj.translate;
     };
-
-    viewport.addEventListener('wheel', (e) => {
-        e.preventDefault();
-        const rect = viewport.getBoundingClientRect();
-        const mx = e.clientX - rect.left;
-        const my = e.clientY - rect.top;
-        const factor = Math.exp(-e.deltaY * 0.0015);
-        const newScale = Math.min(30, Math.max(1, scale * factor));
-        const k = newScale / scale;
-        // Keep the point under the cursor fixed while zooming.
-        tx = mx - k * (mx - tx);
-        ty = my - k * (my - ty);
-        scale = newScale;
-        if (scale === 1) { tx = 0; ty = 0; }
-        apply();
-    }, { passive: false });
-
-    let dragging = false;
-    let lastX = 0;
-    let lastY = 0;
-    viewport.addEventListener('pointerdown', (e) => {
-        dragging = true;
-        lastX = e.clientX;
-        lastY = e.clientY;
-        viewport.setPointerCapture(e.pointerId);
-        viewport.style.cursor = 'grabbing';
-    });
-    viewport.addEventListener('pointermove', (e) => {
-        if (!dragging) return;
-        tx += e.clientX - lastX;
-        ty += e.clientY - lastY;
-        lastX = e.clientX;
-        lastY = e.clientY;
-        apply();
-    });
-    const endDrag = () => { dragging = false; viewport.style.cursor = 'grab'; };
-    viewport.addEventListener('pointerup', endDrag);
-    viewport.addEventListener('pointercancel', endDrag);
-    viewport.addEventListener('dblclick', () => { scale = 1; tx = 0; ty = 0; apply(); });
+    strip(spec.projection);
+    if (Array.isArray(spec.layer)) {
+        spec.layer.forEach((l) => l && strip(l.projection));
+    }
 }
 
 function appendTyping() {
