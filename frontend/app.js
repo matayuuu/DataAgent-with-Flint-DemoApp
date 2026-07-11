@@ -221,15 +221,35 @@ function appendMessage(type, content) {
     div.className = `message ${type}`;
 
     if (type === 'tool-call') {
-        const label = document.createElement('div');
-        label.className = 'tool-label';
+        div.classList.add('collapsed');
         const lines = content.split('\n');
-        label.textContent = lines[0];
+
+        const label = document.createElement('button');
+        label.className = 'tool-label';
+        label.type = 'button';
+
+        const chevron = document.createElement('span');
+        chevron.className = 'tool-chevron';
+        chevron.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>';
+
+        const labelText = document.createElement('span');
+        labelText.className = 'tool-label-text';
+        labelText.textContent = lines[0];
+
+        label.appendChild(chevron);
+        label.appendChild(labelText);
         div.appendChild(label);
+
         if (lines.length > 1) {
             const body = document.createElement('div');
+            body.className = 'tool-body';
             body.textContent = lines.slice(1).join('\n');
             div.appendChild(body);
+            label.addEventListener('click', () => {
+                div.classList.toggle('collapsed');
+            });
+        } else {
+            label.classList.add('no-body');
         }
     } else {
         div.textContent = content;
