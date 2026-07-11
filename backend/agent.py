@@ -34,7 +34,32 @@ class AgentRunner:
         return self._openai_client
 
     async def list_models(self) -> list[dict[str, str]]:
-        """List available models from the Foundry project."""
+        """List available models from the Foundry project.
+
+        Foundry project endpoints do not support the OpenAI ``models.list``
+        route, so we enumerate the project's model deployments instead and
+        fall back to the OpenAI route / a static list if that fails.
+        """
+        # Preferred: enumerate the project's model deployments. This is what
+        # works against Foundry project endpoints.
+        try:
+            client = self._get_project_client()
+            result = []
+            for dep in client.deployments.list():
+                name = getattr(dep, "name", None)
+                if not name:
+                    continue
+                model_name = getattr(dep, "model_name", "") or ""
+                # Skip embedding deployments - they can't be used for chat.
+                if "embedding" in name.lower() or "embedding" in model_name.lower():
+                    continue
+                result.append({"id": name, "name": name})
+            if result:
+                return sorted(result, key=lambda x: x["name"])
+        except Exception as e:
+            logger.error(f"Failed to list deployments: {e}", exc_info=True)
+
+        # Secondary: try the OpenAI models route (works on some resources).
         try:
             client = self._get_openai_client()
             models = client.models.list()
