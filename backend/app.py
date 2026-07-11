@@ -52,6 +52,7 @@ class ChatRequest(BaseModel):
     messages: list[ChatMessage]
     model: str = DEFAULT_MODEL
     system_prompt: str = ""
+    chart_backend: str = "vegalite"
 
 
 class MCPServerCreate(BaseModel):
@@ -100,6 +101,7 @@ async def chat(request: ChatRequest):
             messages=messages,
             model=request.model,
             system_prompt=request.system_prompt,
+            chart_backend=request.chart_backend,
         ):
             yield f"data: {json.dumps(event, ensure_ascii=False)}\n\n"
         yield "data: [DONE]\n\n"
