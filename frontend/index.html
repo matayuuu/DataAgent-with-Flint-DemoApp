@@ -34,6 +34,19 @@
                 </select>
             </section>
 
+            <!-- Chart Library -->
+            <section class="setting-section">
+                <h3>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect x="7" y="10" width="3" height="7"/><rect x="12" y="6" width="3" height="11"/><rect x="17" y="13" width="3" height="4"/></svg>
+                    チャートライブラリ
+                </h3>
+                <select id="chartBackend" class="input-full">
+                    <option value="vegalite">Vega-Lite</option>
+                    <option value="echarts">ECharts</option>
+                    <option value="chartjs">Chart.js</option>
+                </select>
+            </section>
+
             <!-- System Prompt -->
             <section class="setting-section">
                 <h3>
@@ -184,6 +197,8 @@
     <script src="https://cdn.jsdelivr.net/npm/vega@5.30.0"></script>
     <script src="https://cdn.jsdelivr.net/npm/vega-lite@5.21.0"></script>
     <script src="https://cdn.jsdelivr.net/npm/vega-embed@6.26.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

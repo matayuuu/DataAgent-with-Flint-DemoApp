@@ -139,6 +139,7 @@ async function sendMessage() {
                 messages: state.messages,
                 model: model,
                 system_prompt: document.getElementById('systemPrompt').value,
+                chart_backend: document.getElementById('chartBackend').value,
             }),
         });
 
@@ -221,8 +222,11 @@ function handleStreamEvent(event, turnCtx) {
         case 'image':
             appendImageMessage(event.mimeType || 'image/png', event.data);
             break;
+        case 'chart':
+            appendChartMessage(event.backend || 'vegalite', event.spec);
+            break;
         case 'vegalite':
-            appendVegaLiteMessage(event.spec);
+            appendChartMessage('vegalite', event.spec);
             break;
         case 'error':
             typingEl.remove();
@@ -401,6 +405,80 @@ function appendImageMessage(mimeType, base64Data) {
     img.className = 'chat-image';
     div.appendChild(img);
     container.appendChild(div);
+    scrollToBottom();
+    return div;
+}
+
+// Dispatch a compiled chart spec to the renderer for its backend.
+function appendChartMessage(backend, spec) {
+    if (backend === 'echarts') return appendEChartsMessage(spec);
+    if (backend === 'chartjs') return appendChartJsMessage(spec);
+    return appendVegaLiteMessage(spec);
+}
+
+function appendEChartsMessage(option) {
+    const container = document.getElementById('chatMessages');
+    const div = document.createElement('div');
+    div.className = 'message assistant vega-message';
+
+    const chartDiv = document.createElement('div');
+    chartDiv.className = 'echarts-container';
+    div.appendChild(chartDiv);
+    container.appendChild(div);
+
+    if (typeof echarts === 'undefined') {
+        chartDiv.textContent = 'ECharts ライブラリの読み込みに失敗しました';
+        scrollToBottom();
+        return div;
+    }
+
+    try {
+        const chart = echarts.init(chartDiv);
+        chart.setOption(option);
+        // Keep the chart sized to its (responsive) container width.
+        if (typeof ResizeObserver !== 'undefined') {
+            const ro = new ResizeObserver(() => chart.resize());
+            ro.observe(chartDiv);
+        } else {
+            window.addEventListener('resize', () => chart.resize());
+        }
+    } catch (e) {
+        chartDiv.textContent = `チャート描画エラー: ${e.message}`;
+    }
+
+    scrollToBottom();
+    return div;
+}
+
+function appendChartJsMessage(config) {
+    const container = document.getElementById('chatMessages');
+    const div = document.createElement('div');
+    div.className = 'message assistant vega-message';
+
+    const wrap = document.createElement('div');
+    wrap.className = 'chartjs-container';
+    const canvas = document.createElement('canvas');
+    wrap.appendChild(canvas);
+    div.appendChild(wrap);
+    container.appendChild(div);
+
+    if (typeof Chart === 'undefined') {
+        wrap.textContent = 'Chart.js ライブラリの読み込みに失敗しました';
+        scrollToBottom();
+        return div;
+    }
+
+    try {
+        const cfg = Object.assign({}, config);
+        cfg.options = Object.assign(
+            { responsive: true, maintainAspectRatio: false },
+            config.options || {},
+        );
+        new Chart(canvas, cfg);
+    } catch (e) {
+        wrap.textContent = `チャート描画エラー: ${e.message}`;
+    }
+
     scrollToBottom();
     return div;
 }

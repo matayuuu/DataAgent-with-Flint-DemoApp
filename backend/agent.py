@@ -96,6 +96,7 @@ class AgentRunner:
         messages: list[dict[str, Any]],
         model: str,
         system_prompt: str = "",
+        chart_backend: str = "vegalite",
     ) -> AsyncGenerator[dict[str, Any], None]:
         """Run a chat turn with MCP tool execution loop. Yields streamed events."""
         client = self._get_openai_client()
@@ -108,21 +109,33 @@ class AgentRunner:
         full_messages = []
         combined_system = system_prompt or ""
 
-        # If a chart tool is available, guide the model to produce a Vega-Lite
-        # spec that the UI renders as an interactive chart (vega-embed).
+        # If a chart tool is available, guide the model to produce a spec for the
+        # user-selected backend that the UI renders as an interactive chart.
         tool_full_names = {t["full_name"] for t in mcp_tools}
         compile_tools = [n for n in tool_full_names if n.endswith("__compile_chart")]
         if compile_tools:
-            chart_hint = (
-                "To display a chart, graph, or map, use the `compile_chart` tool with "
-                "`backend` set to \"vegalite\". It returns a Vega-Lite specification that "
-                "this playground renders as an interactive chart. Vega-Lite natively "
-                "supports geographic maps: use chartType \"Map\" for a bubble/symbol map "
-                "(channels: longitude, latitude, color, size) and \"Choropleth\" for "
-                "filled regions (channels: id, color, detail). When the data covers only "
-                "Japan, keep the map focused on Japan. Do NOT use `render_chart` (static "
-                "PNG) or `create_chart_view` (text only) for display."
-            )
+            backend = chart_backend if chart_backend in ("vegalite", "echarts", "chartjs") else "vegalite"
+            if backend == "vegalite":
+                chart_hint = (
+                    "To display a chart, graph, or map, use the `compile_chart` tool with "
+                    "`backend` set to \"vegalite\". It returns a Vega-Lite specification that "
+                    "this playground renders as an interactive chart. Vega-Lite natively "
+                    "supports geographic maps: use chartType \"Map\" for a bubble/symbol map "
+                    "(channels: longitude, latitude, color, size) and \"Choropleth\" for "
+                    "filled regions (channels: id, color, detail). When the data covers only "
+                    "Japan, keep the map focused on Japan. Do NOT use `render_chart` (static "
+                    "PNG) or `create_chart_view` (text only) for display."
+                )
+            else:
+                label = "ECharts" if backend == "echarts" else "Chart.js"
+                chart_hint = (
+                    f"To display a chart or graph, use the `compile_chart` tool with "
+                    f"`backend` set to \"{backend}\". It returns a {label} specification that "
+                    f"this playground renders as an interactive chart. For geographic maps, "
+                    f"use `backend` \"vegalite\" instead, which has built-in map support. Do "
+                    f"NOT use `render_chart` (static PNG) or `create_chart_view` (text only) "
+                    f"for display."
+                )
             combined_system = (combined_system + "\n\n" + chart_hint).strip()
 
         if combined_system:
@@ -187,9 +200,9 @@ class AgentRunner:
                 if result.get("error"):
                     result_text = f"Error: {result['error']}"
 
-                # Detect a Vega-Lite spec (from Flint compile_chart) so the
-                # UI can render it as an interactive chart via vega-embed.
-                vegalite_spec = self._extract_vegalite_spec(result_text)
+                # Detect a compiled chart spec (from Flint compile_chart) so the
+                # UI can render it as an interactive chart for the chosen backend.
+                chart = self._extract_chart_spec(result_text)
 
                 yield {
                     "type": "tool_result",
@@ -197,11 +210,12 @@ class AgentRunner:
                     "result": result_text[:4000] if len(result_text) > 4000 else result_text,
                 }
 
-                if vegalite_spec is not None:
+                if chart is not None:
                     yield {
-                        "type": "vegalite",
+                        "type": "chart",
                         "tool_name": func_name,
-                        "spec": vegalite_spec,
+                        "backend": chart["backend"],
+                        "spec": chart["spec"],
                     }
 
                 # Emit any image artifacts (e.g. charts) for the UI to render
@@ -215,9 +229,9 @@ class AgentRunner:
 
                 # Text sent back to the model. Summarize artifacts instead of
                 # dumping large specs/binaries so the model stays focused.
-                if vegalite_spec is not None:
+                if chart is not None:
                     model_content = (
-                        "[An interactive Vega-Lite chart was rendered and is now shown to "
+                        "[An interactive chart was rendered and is now shown to "
                         "the user. Briefly describe the chart; do not repeat the spec.]"
                     )
                 elif images and not result_text.strip():
@@ -235,22 +249,25 @@ class AgentRunner:
 
         yield {"type": "error", "content": "Max tool call iterations reached"}
 
-    def _extract_vegalite_spec(self, text: str) -> dict | None:
-        """Parse a Flint compile_chart result and return the Vega-Lite spec.
+    def _extract_chart_spec(self, text: str) -> dict | None:
+        """Parse a Flint compile_chart result and return the chart spec.
 
-        Returns the Vega-Lite spec dict when the text is JSON with
-        backend == "vegalite" and a `spec`; otherwise None.
+        Returns ``{"backend": <name>, "spec": <dict>}`` when the text is JSON
+        produced by ``compile_chart`` for a supported backend (vegalite,
+        echarts, or chartjs); otherwise None.
         """
-        if not text or "vegalite" not in text:
+        if not text:
+            return None
+        if not any(b in text for b in ("vegalite", "echarts", "chartjs")):
             return None
         try:
             parsed = json.loads(text)
         except (json.JSONDecodeError, TypeError):
             return None
-        if isinstance(parsed, dict) and parsed.get("backend") == "vegalite":
+        if isinstance(parsed, dict) and parsed.get("backend") in ("vegalite", "echarts", "chartjs"):
             spec = parsed.get("spec")
             if isinstance(spec, dict):
-                return spec
+                return {"backend": parsed["backend"], "spec": spec}
         return None
 
     def _build_openai_tools(self, mcp_tools: list[dict]) -> list[dict]:
