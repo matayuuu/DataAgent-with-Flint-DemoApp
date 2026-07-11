@@ -1,6 +1,6 @@
 # Flint + Data Agent Playground
 
-**Fabric Data Agent** でデータを分析し、**Flint Chart** で可視化する流れを試せる、ローカル Web チャットプレイグラウンドです。Azure Foundry Agent Service（Python SDK）をバックエンドに、MCP ツールの呼び出しと結果をチャット上で確認しながら対話的に操作できます。
+**Fabric Data Agent** でデータを分析し、**[Flint Chart](https://github.com/microsoft/flint-chart)** で可視化する流れを試せる、ローカル Web チャットプレイグラウンドです。Microsoft Foundry Agent Service（Python SDK）をバックエンドに、MCP ツールの呼び出しと結果をチャット上で確認しながら対話的に操作できます。
 
 ## 主な機能
 
@@ -35,7 +35,13 @@ python main.py
 
 ## Fabric Data Agent を追加する
 
-UI の「＋ 追加」を押すと、既定値が Fabric Data Agent 向け（Streamable HTTP + Azure CLI 認証）で入力されます。URL だけ自分のエンドポイントに置き換えてください。
+左の設定パネルの「＋ 追加」を押します。
+
+![MCP サーバーの追加ボタン](docs/images/01-add-mcp-button.png)
+
+既定値が Fabric Data Agent 向け（**トランスポート = Streamable HTTP**、**認証 = Azure CLI**）で入力されます。**URL** だけ自分のエンドポイントに置き換えてください。
+
+![MCP サーバー追加モーダル（赤枠を確認）](docs/images/02-add-mcp-modal.png)
 
 ```
 https://api.fabric.microsoft.com/v1/mcp/workspaces/{WorkspaceId}/dataagents/{DataAgentId}/agent
@@ -49,7 +55,7 @@ https://api.fabric.microsoft.com/v1/mcp/workspaces/{WorkspaceId}/dataagents/{Dat
 ```
 ブラウザ (Chat UI)
       │  HTTP / SSE
-FastAPI バックエンド  ──►  Azure Foundry（モデル推論）
+FastAPI バックエンド  ──►  Microsoft Foundry（モデル推論）
       │
       └─►  MCP サーバー（Flint Chart / Fabric Data Agent）
 ```
@@ -57,6 +63,12 @@ FastAPI バックエンド  ──►  Azure Foundry（モデル推論）
 1. ユーザーの質問をモデルに送信
 2. モデルが MCP ツールを呼び出し、バックエンドが実行
 3. 結果をモデルに返し、最終回答とチャートを表示
+
+### デモ
+
+「2025年の売上を月別で出力して」と質問すると、Fabric Data Agent が集計し、Flint がグラフを描画します。
+
+![デモ: 月別売上の分析と可視化](docs/images/demo.gif)
 
 ## ライセンス
 
