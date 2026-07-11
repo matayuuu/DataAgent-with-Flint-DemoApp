@@ -1,100 +1,63 @@
 # Flint + Data Agent Playground
 
-Azure Foundry Agent Service の Python SDK を使用した、**Flint Chart** と **Fabric Data Agent** による分析・可視化デモ用のローカル Web プレイグラウンドです。
+**Fabric Data Agent** でデータを分析し、**Flint Chart** で可視化する流れを試せる、ローカル Web チャットプレイグラウンドです。Azure Foundry Agent Service（Python SDK）をバックエンドに、MCP ツールの呼び出しと結果をチャット上で確認しながら対話的に操作できます。
 
-MCP ツール (Flint Chart / Fabric Data Agent) の呼び出しと結果をチャット上で確認しながら、対話的にデータ分析・可視化を試せます。
+## 主な機能
 
-## 機能
+- **チャット UI**: モデルとシステムプロンプトを選んで対話
+- **MCP サーバー管理**: サーバーの追加・編集・削除（UI から）
+  - Flint Chart … チャート生成（プリセット済み）
+  - Fabric Data Agent … データエージェントへの質問（追加して利用）
+- **アクティビティ表示**: 1 ターンの MCP 実行・出力を折りたたみでまとめて表示
 
-- **モデル選択**: Foundry プロジェクトで利用可能なモデルをプルダウンで選択
-- **システムプロンプト**: エージェントの動作を定義するシステムプロンプトを設定
-- **MCP サーバー管理**: MCP サーバーの追加・編集・削除
-  - Flint Chart (プリセット済み・ローカル stdio): `npx -y flint-chart-mcp`
-  - Fabric Data Agent (追加 MCP・Streamable HTTP): データエージェントへの質問と可視化
-- **ターン単位のアクティビティ表示**: 1 ターンで発生した MCP 実行・出力を 1 つの折りたたみグループにまとめ、既定では非表示。展開すると各ステップを個別に開閉できます。
-
-## 前提条件
+## 必要なもの
 
 - Python 3.11+
-- Node.js 18+ (`npx` コマンドが必要 - Flint MCP 用)
-- Azure CLI (`az login` で認証済み)
-- Microsoft Foundry プロジェクト (デプロイ済みモデルあり)
+- Node.js 18+（Flint MCP の `npx` 用）
+- Azure CLI（`az login` 済み）
+- Microsoft Foundry プロジェクト（モデルをデプロイ済み）
 
-## セットアップ
+## クイックスタート
 
 ```bash
-# 1. 仮想環境の作成
 python -m venv .venv
+.venv\Scripts\activate        # Windows
 
-# Windows
-.venv\Scripts\activate
-
-# 2. 依存関係のインストール
 pip install -r requirements.txt
 
-# 3. 環境変数の設定
-copy .env.example .env
-# .env ファイルを編集して PROJECT_ENDPOINT を設定
+copy .env.example .env        # .env の PROJECT_ENDPOINT を設定
 
-# 4. Azure CLI でログイン
 az login
-
-# 5. サーバー起動
 python main.py
 ```
 
-ブラウザで http://localhost:8000 を開きます。
+起動後、ブラウザで http://localhost:8000 を開きます。
 
-## MCP サーバー
+## Fabric Data Agent を追加する
 
-### Flint Chart (プリセット済み)
-
-ローカルの stdio MCP サーバーとして設定済み:
-- コマンド: `npx`
-- 引数: `-y`, `flint-chart-mcp`
-
-データの可視化やチャート生成をエージェントに依頼できます。
-
-### Fabric Data Agent (追加 MCP サーバー)
-
-追加 MCP サーバーは Fabric Data Agent を前提としています。UI の「＋ 追加」を押すと、既定値が Fabric Data Agent 向け (Streamable HTTP + Azure CLI 認証) に設定されます。
-
-1. UI の「＋ 追加」をクリック
-2. トランスポート: Streamable HTTP (リモート) ※既定
-3. URL: Fabric Data Agent の MCP エンドポイント
-   `https://api.fabric.microsoft.com/v1/mcp/workspaces/{WorkspaceId}/dataagents/{DataAgentId}/agent`
-4. 認証: Azure CLI ※既定 (スコープ `https://api.fabric.microsoft.com/.default`)
-
-`az login` 済みのトークンを使ってデータエージェントに接続します。
-
-参考: https://learn.microsoft.com/ja-jp/fabric/data-science/data-agent-mcp-server
-
-## アーキテクチャ
+UI の「＋ 追加」を押すと、既定値が Fabric Data Agent 向け（Streamable HTTP + Azure CLI 認証）で入力されます。URL だけ自分のエンドポイントに置き換えてください。
 
 ```
-┌─────────────────────────────────────────────────┐
-│  Frontend (HTML/JS)                             │
-│  - Chat UI                                      │
-│  - Model/Prompt/MCP 設定パネル                   │
-└────────────────────┬────────────────────────────┘
-                     │ HTTP/SSE
-┌────────────────────▼────────────────────────────┐
-│  Backend (FastAPI)                              │
-│  - /api/chat: エージェントループ                  │
-│  - /api/models: モデル一覧                       │
-│  - /api/mcp/*: MCP サーバー管理                  │
-└────────┬───────────────────────┬────────────────┘
-         │                       │
-         ▼                       ▼
-┌─────────────────┐    ┌─────────────────────────┐
-│ Azure Foundry   │    │ MCP Servers             │
-│ (モデル推論)     │    │ - Flint (stdio/local)   │
-│                 │    │ - Fabric Agent (HTTP)   │
-└─────────────────┘    └─────────────────────────┘
+https://api.fabric.microsoft.com/v1/mcp/workspaces/{WorkspaceId}/dataagents/{DataAgentId}/agent
 ```
 
-エージェントループ:
-1. ユーザーメッセージ → Foundry モデルに送信
-2. モデルがツール呼び出しを返す → MCP サーバー経由で実行
-3. ツール結果 → モデルに返送
-4. 最終回答をユーザーに表示
+`az login` のトークン（スコープ `https://api.fabric.microsoft.com/.default`）で接続します。
+詳細: https://learn.microsoft.com/ja-jp/fabric/data-science/data-agent-mcp-server
+
+## 仕組み
+
+```
+ブラウザ (Chat UI)
+      │  HTTP / SSE
+FastAPI バックエンド  ──►  Azure Foundry（モデル推論）
+      │
+      └─►  MCP サーバー（Flint Chart / Fabric Data Agent）
+```
+
+1. ユーザーの質問をモデルに送信
+2. モデルが MCP ツールを呼び出し、バックエンドが実行
+3. 結果をモデルに返し、最終回答とチャートを表示
+
+## ライセンス
+
+[Apache License 2.0](LICENSE)（商用利用可）
