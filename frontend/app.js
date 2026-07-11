@@ -296,11 +296,10 @@ function appendVegaLiteMessage(spec) {
         embedSpec.width = 'container';
     }
 
-    // For geographic maps, strip explicit projection scale/center/translate so
-    // Vega-Lite auto-fits the projection to the actual data extent (e.g. Japan
-    // only instead of the whole globe).
+    // For geographic maps, fit the projection to the actual data extent (e.g.
+    // Japan only) instead of letting Vega-Lite fit to the whole world basemap.
     if (isMapSpec(embedSpec)) {
-        autoFitProjection(embedSpec);
+        fitProjectionToData(embedSpec);
     }
 
     vegaEmbed(chartDiv, embedSpec, {
@@ -327,9 +326,98 @@ function isMapSpec(spec) {
     return false;
 }
 
-// Strip explicit scale / center / translate from a Vega-Lite projection so
-// the renderer auto-fits the map to the geographic data extent.
-function autoFitProjection(spec) {
+// Fit a Vega-Lite geographic projection to the extent of the plotted data
+// points. Flint emits a world basemap (world-110m) plus a bubble layer, and
+// Vega-Lite's default projection fitting fits to the whole world - so data that
+// only covers Japan renders as tiny dots on a global map. We compute the
+// bounding box of the actual longitude/latitude data and set an explicit
+// mercator center + scale so the map zooms to the data region.
+function fitProjectionToData(spec) {
+    const layers = Array.isArray(spec.layer) ? spec.layer : [spec];
+
+    // 1. Find the longitude / latitude field names from any layer's encoding.
+    let lonField = null;
+    let latField = null;
+    for (const l of layers) {
+        const enc = l && l.encoding;
+        if (!enc) continue;
+        if (!lonField && enc.longitude && enc.longitude.field) lonField = enc.longitude.field;
+        if (!latField && enc.latitude && enc.latitude.field) latField = enc.latitude.field;
+    }
+
+    // 2. Collect the data rows (top-level data, or any layer-level data).
+    const rows = [];
+    const pushRows = (d) => {
+        if (d && Array.isArray(d.values)) rows.push(...d.values);
+    };
+    pushRows(spec.data);
+    for (const l of layers) pushRows(l && l.data);
+
+    // Without lon/lat fields or rows (e.g. choropleth by region id) we can't
+    // compute an extent - fall back to stripping fixed projection params so
+    // Vega-Lite at least auto-fits rather than using a hard-coded scale.
+    if (!lonField || !latField || rows.length === 0) {
+        stripProjectionParams(spec);
+        return;
+    }
+
+    let minLon = Infinity, maxLon = -Infinity, minLat = Infinity, maxLat = -Infinity;
+    let count = 0;
+    for (const row of rows) {
+        const lon = Number(row[lonField]);
+        const lat = Number(row[latField]);
+        if (!Number.isFinite(lon) || !Number.isFinite(lat)) continue;
+        if (lat <= -90 || lat >= 90) continue;
+        minLon = Math.min(minLon, lon);
+        maxLon = Math.max(maxLon, lon);
+        minLat = Math.min(minLat, lat);
+        maxLat = Math.max(maxLat, lat);
+        count++;
+    }
+    if (count === 0) {
+        stripProjectionParams(spec);
+        return;
+    }
+
+    const width = Number(spec.width) || 600;
+    const height = Number(spec.height) || 350;
+    const DEG2RAD = Math.PI / 180;
+    const mercY = (latDeg) => {
+        const clamped = Math.max(-85, Math.min(85, latDeg));
+        return Math.log(Math.tan(Math.PI / 4 + (clamped * DEG2RAD) / 2));
+    };
+
+    const centerLon = (minLon + maxLon) / 2;
+    const centerLat = (minLat + maxLat) / 2;
+
+    // Longitude / latitude spans with a sensible minimum so a single point (or
+    // a very tight cluster) doesn't zoom in absurdly far.
+    const MIN_SPAN_DEG = 4;
+    const spanLon = Math.max(maxLon - minLon, MIN_SPAN_DEG) * DEG2RAD;
+    const spanLat = Math.max(mercY(maxLat) - mercY(minLat), MIN_SPAN_DEG * DEG2RAD);
+
+    // d3/mercator: projected extent in pixels = scale * (angular span). Fit both
+    // axes and take the tighter one, then pad so points aren't flush to the edge.
+    const PADDING = 1.35;
+    const scaleLon = width / spanLon;
+    const scaleLat = height / spanLat;
+    let scale = Math.min(scaleLon, scaleLat) / PADDING;
+    scale = Math.max(50, Math.min(scale, 20000));
+
+    const projection = {
+        type: 'mercator',
+        center: [centerLon, centerLat],
+        scale: scale,
+    };
+    for (const l of layers) {
+        if (l && typeof l === 'object') l.projection = projection;
+    }
+    if (!Array.isArray(spec.layer)) spec.projection = projection;
+}
+
+// Strip explicit scale / center / translate from a Vega-Lite projection so the
+// renderer auto-fits the map to the geographic data extent.
+function stripProjectionParams(spec) {
     const strip = (proj) => {
         if (!proj || typeof proj !== 'object') return;
         delete proj.scale;
