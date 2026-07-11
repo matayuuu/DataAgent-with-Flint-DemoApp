@@ -111,6 +111,10 @@ async function sendMessage() {
     // Show typing indicator
     const typingEl = appendTyping();
 
+    // Per-turn context: all tool activity for this turn is grouped into a
+    // single collapsible container (created lazily on first tool event).
+    const turnCtx = { group: null, typingEl };
+
     try {
         const res = await fetch(`${API_BASE}/api/chat`, {
             method: 'POST',
@@ -142,7 +146,7 @@ async function sendMessage() {
 
                 try {
                     const event = JSON.parse(data);
-                    handleStreamEvent(event, typingEl);
+                    handleStreamEvent(event, turnCtx);
                     if (event.type === 'content') {
                         assistantContent = event.content;
                     }
@@ -168,18 +172,36 @@ async function sendMessage() {
     document.getElementById('sendBtn').disabled = false;
 }
 
-function handleStreamEvent(event, typingEl) {
+function handleStreamEvent(event, turnCtx) {
+    const typingEl = turnCtx.typingEl;
     switch (event.type) {
         case 'content':
             typingEl.remove();
             appendMessage('assistant', event.content);
             break;
-        case 'tool_call':
-            appendMessage('tool-call', `🔧 ${event.tool_name}\n${JSON.stringify(event.arguments, null, 2)}`);
+        case 'tool_call': {
+            const group = ensureActivityGroup(turnCtx);
+            appendActivityItem(group, {
+                title: `🔧 ${event.tool_name} を実行`,
+                variant: 'tool-call',
+                bodyText: JSON.stringify(event.arguments, null, 2),
+            });
+            keepTypingLast(turnCtx);
             break;
-        case 'tool_result':
-            appendMessage('tool-call', `✅ ${event.tool_name}\n${typeof event.result === 'string' ? event.result : JSON.stringify(event.result, null, 2)}`);
+        }
+        case 'tool_result': {
+            const group = ensureActivityGroup(turnCtx);
+            const txt = typeof event.result === 'string'
+                ? event.result
+                : JSON.stringify(event.result, null, 2);
+            appendActivityItem(group, {
+                title: `✅ ${event.tool_name} の結果`,
+                variant: 'tool-result',
+                bodyText: txt,
+            });
+            keepTypingLast(turnCtx);
             break;
+        }
         case 'image':
             appendImageMessage(event.mimeType || 'image/png', event.data);
             break;
@@ -190,6 +212,99 @@ function handleStreamEvent(event, typingEl) {
             typingEl.remove();
             appendMessage('error', event.content);
             break;
+    }
+}
+
+// Lazily create the per-turn activity group (collapsed by default). It holds
+// every MCP execution / output / query for a single turn behind one toggle.
+function ensureActivityGroup(turnCtx) {
+    if (turnCtx.group) return turnCtx.group;
+
+    const container = document.getElementById('chatMessages');
+    const group = document.createElement('div');
+    group.className = 'activity-group collapsed';
+
+    const header = document.createElement('button');
+    header.type = 'button';
+    header.className = 'activity-group-header';
+    header.innerHTML =
+        '<span class="activity-chevron"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>' +
+        '<span class="activity-group-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></span>' +
+        '<span class="activity-group-title">処理の詳細</span>' +
+        '<span class="activity-group-count">0 ステップ</span>';
+
+    const body = document.createElement('div');
+    body.className = 'activity-group-body';
+
+    header.addEventListener('click', () => group.classList.toggle('collapsed'));
+
+    group.appendChild(header);
+    group.appendChild(body);
+    container.appendChild(group);
+
+    group._body = body;
+    group._count = 0;
+    group._countEl = header.querySelector('.activity-group-count');
+
+    turnCtx.group = group;
+    return group;
+}
+
+// Append one collapsible step (tool call / result / query) into a group.
+function appendActivityItem(group, opts) {
+    const item = document.createElement('div');
+    item.className = `activity-item ${opts.variant} collapsed`;
+
+    const label = document.createElement('button');
+    label.type = 'button';
+    label.className = 'tool-label';
+
+    const chevron = document.createElement('span');
+    chevron.className = 'tool-chevron';
+    chevron.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>';
+
+    const labelText = document.createElement('span');
+    labelText.className = 'tool-label-text';
+    labelText.textContent = opts.title;
+
+    label.appendChild(chevron);
+    label.appendChild(labelText);
+    item.appendChild(label);
+
+    if (opts.bodyText) {
+        const body = document.createElement('div');
+        body.className = 'tool-body';
+        if (opts.codeLang) {
+            const langTag = document.createElement('div');
+            langTag.className = 'code-lang';
+            langTag.textContent = opts.codeLang.toUpperCase();
+            const pre = document.createElement('pre');
+            pre.className = 'code-block';
+            pre.textContent = opts.bodyText;
+            body.appendChild(langTag);
+            body.appendChild(pre);
+        } else {
+            body.textContent = opts.bodyText;
+        }
+        item.appendChild(body);
+        label.addEventListener('click', () => item.classList.toggle('collapsed'));
+    } else {
+        label.classList.add('no-body');
+    }
+
+    group._body.appendChild(item);
+    group._count++;
+    group._countEl.textContent = `${group._count} ステップ`;
+    scrollToBottom();
+    return item;
+}
+
+// Keep the typing indicator visually below the activity group while streaming.
+function keepTypingLast(turnCtx) {
+    const el = turnCtx.typingEl;
+    if (el && el.parentNode) {
+        el.parentNode.appendChild(el);
+        scrollToBottom();
     }
 }
 
@@ -221,15 +336,35 @@ function appendMessage(type, content) {
     div.className = `message ${type}`;
 
     if (type === 'tool-call') {
-        const label = document.createElement('div');
-        label.className = 'tool-label';
+        div.classList.add('collapsed');
         const lines = content.split('\n');
-        label.textContent = lines[0];
+
+        const label = document.createElement('button');
+        label.className = 'tool-label';
+        label.type = 'button';
+
+        const chevron = document.createElement('span');
+        chevron.className = 'tool-chevron';
+        chevron.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>';
+
+        const labelText = document.createElement('span');
+        labelText.className = 'tool-label-text';
+        labelText.textContent = lines[0];
+
+        label.appendChild(chevron);
+        label.appendChild(labelText);
         div.appendChild(label);
+
         if (lines.length > 1) {
             const body = document.createElement('div');
+            body.className = 'tool-body';
             body.textContent = lines.slice(1).join('\n');
             div.appendChild(body);
+            label.addEventListener('click', () => {
+                div.classList.toggle('collapsed');
+            });
+        } else {
+            label.classList.add('no-body');
         }
     } else {
         div.textContent = content;
@@ -276,11 +411,10 @@ function appendVegaLiteMessage(spec) {
         embedSpec.width = 'container';
     }
 
-    // For geographic maps, strip explicit projection scale/center/translate so
-    // Vega-Lite auto-fits the projection to the actual data extent (e.g. Japan
-    // only instead of the whole globe).
+    // For geographic maps, fit the projection to the actual data extent (e.g.
+    // Japan only) instead of letting Vega-Lite fit to the whole world basemap.
     if (isMapSpec(embedSpec)) {
-        autoFitProjection(embedSpec);
+        fitProjectionToData(embedSpec);
     }
 
     vegaEmbed(chartDiv, embedSpec, {
@@ -307,9 +441,98 @@ function isMapSpec(spec) {
     return false;
 }
 
-// Strip explicit scale / center / translate from a Vega-Lite projection so
-// the renderer auto-fits the map to the geographic data extent.
-function autoFitProjection(spec) {
+// Fit a Vega-Lite geographic projection to the extent of the plotted data
+// points. Flint emits a world basemap (world-110m) plus a bubble layer, and
+// Vega-Lite's default projection fitting fits to the whole world - so data that
+// only covers Japan renders as tiny dots on a global map. We compute the
+// bounding box of the actual longitude/latitude data and set an explicit
+// mercator center + scale so the map zooms to the data region.
+function fitProjectionToData(spec) {
+    const layers = Array.isArray(spec.layer) ? spec.layer : [spec];
+
+    // 1. Find the longitude / latitude field names from any layer's encoding.
+    let lonField = null;
+    let latField = null;
+    for (const l of layers) {
+        const enc = l && l.encoding;
+        if (!enc) continue;
+        if (!lonField && enc.longitude && enc.longitude.field) lonField = enc.longitude.field;
+        if (!latField && enc.latitude && enc.latitude.field) latField = enc.latitude.field;
+    }
+
+    // 2. Collect the data rows (top-level data, or any layer-level data).
+    const rows = [];
+    const pushRows = (d) => {
+        if (d && Array.isArray(d.values)) rows.push(...d.values);
+    };
+    pushRows(spec.data);
+    for (const l of layers) pushRows(l && l.data);
+
+    // Without lon/lat fields or rows (e.g. choropleth by region id) we can't
+    // compute an extent - fall back to stripping fixed projection params so
+    // Vega-Lite at least auto-fits rather than using a hard-coded scale.
+    if (!lonField || !latField || rows.length === 0) {
+        stripProjectionParams(spec);
+        return;
+    }
+
+    let minLon = Infinity, maxLon = -Infinity, minLat = Infinity, maxLat = -Infinity;
+    let count = 0;
+    for (const row of rows) {
+        const lon = Number(row[lonField]);
+        const lat = Number(row[latField]);
+        if (!Number.isFinite(lon) || !Number.isFinite(lat)) continue;
+        if (lat <= -90 || lat >= 90) continue;
+        minLon = Math.min(minLon, lon);
+        maxLon = Math.max(maxLon, lon);
+        minLat = Math.min(minLat, lat);
+        maxLat = Math.max(maxLat, lat);
+        count++;
+    }
+    if (count === 0) {
+        stripProjectionParams(spec);
+        return;
+    }
+
+    const width = Number(spec.width) || 600;
+    const height = Number(spec.height) || 350;
+    const DEG2RAD = Math.PI / 180;
+    const mercY = (latDeg) => {
+        const clamped = Math.max(-85, Math.min(85, latDeg));
+        return Math.log(Math.tan(Math.PI / 4 + (clamped * DEG2RAD) / 2));
+    };
+
+    const centerLon = (minLon + maxLon) / 2;
+    const centerLat = (minLat + maxLat) / 2;
+
+    // Longitude / latitude spans with a sensible minimum so a single point (or
+    // a very tight cluster) doesn't zoom in absurdly far.
+    const MIN_SPAN_DEG = 4;
+    const spanLon = Math.max(maxLon - minLon, MIN_SPAN_DEG) * DEG2RAD;
+    const spanLat = Math.max(mercY(maxLat) - mercY(minLat), MIN_SPAN_DEG * DEG2RAD);
+
+    // d3/mercator: projected extent in pixels = scale * (angular span). Fit both
+    // axes and take the tighter one, then pad so points aren't flush to the edge.
+    const PADDING = 1.35;
+    const scaleLon = width / spanLon;
+    const scaleLat = height / spanLat;
+    let scale = Math.min(scaleLon, scaleLat) / PADDING;
+    scale = Math.max(50, Math.min(scale, 20000));
+
+    const projection = {
+        type: 'mercator',
+        center: [centerLon, centerLat],
+        scale: scale,
+    };
+    for (const l of layers) {
+        if (l && typeof l === 'object') l.projection = projection;
+    }
+    if (!Array.isArray(spec.layer)) spec.projection = projection;
+}
+
+// Strip explicit scale / center / translate from a Vega-Lite projection so the
+// renderer auto-fits the map to the geographic data extent.
+function stripProjectionParams(spec) {
     const strip = (proj) => {
         if (!proj || typeof proj !== 'object') return;
         delete proj.scale;
@@ -416,12 +639,13 @@ function openMcpModal(serverId = null) {
         document.getElementById('mcpHeaders').value = server.headers ? JSON.stringify(server.headers, null, 2) : '';
     } else {
         title.textContent = 'MCPサーバーを追加';
-        document.getElementById('mcpName').value = '';
-        document.getElementById('mcpTransport').value = 'stdio';
+        // Default new servers to Fabric Data Agent (streamable_http + Azure CLI auth)
+        document.getElementById('mcpName').value = 'Fabric Data Agent';
+        document.getElementById('mcpTransport').value = 'streamable_http';
         document.getElementById('mcpCommand').value = '';
         document.getElementById('mcpArgs').value = '';
         document.getElementById('mcpUrl').value = '';
-        document.getElementById('mcpAuthType').value = 'none';
+        document.getElementById('mcpAuthType').value = 'azure_cli';
         document.getElementById('mcpAuthScope').value = 'https://api.fabric.microsoft.com/.default';
         document.getElementById('mcpHeaders').value = '';
     }

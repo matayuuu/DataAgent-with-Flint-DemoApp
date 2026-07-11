@@ -567,14 +567,257 @@ textarea.input-full {
     font-family: 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
     max-width: 90%;
     border-radius: var(--radius-sm);
+    padding: 0;
+    overflow: hidden;
 }
 
 .message.tool-call .tool-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    background: none;
+    border: none;
     color: var(--success);
     font-weight: 600;
-    margin-bottom: 6px;
     font-size: 11px;
     letter-spacing: 0.02em;
+    font-family: inherit;
+    padding: 12px 16px;
+    cursor: pointer;
+    text-align: left;
+    transition: background var(--transition);
+}
+
+.message.tool-call .tool-label:hover {
+    background: rgba(52, 211, 153, 0.06);
+}
+
+.message.tool-call .tool-label.no-body {
+    cursor: default;
+}
+
+.message.tool-call .tool-label.no-body:hover {
+    background: none;
+}
+
+.message.tool-call .tool-label.no-body .tool-chevron {
+    visibility: hidden;
+}
+
+.message.tool-call .tool-chevron {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: transform var(--transition);
+    opacity: 0.7;
+}
+
+.message.tool-call:not(.collapsed) .tool-chevron {
+    transform: rotate(90deg);
+}
+
+.message.tool-call .tool-label-text {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.message.tool-call .tool-body {
+    padding: 0 16px 12px 16px;
+    color: var(--text-secondary);
+    white-space: pre-wrap;
+    word-break: break-word;
+    border-top: 1px solid var(--tool-border);
+    padding-top: 12px;
+    animation: fadeIn 0.2s ease-out;
+}
+
+.message.tool-call.collapsed .tool-body {
+    display: none;
+}
+
+/* Per-turn activity group (collapsible container of all tool steps) */
+.activity-group {
+    align-self: flex-start;
+    max-width: 90%;
+    width: 100%;
+    background: var(--tool-bg);
+    border: 1px solid var(--tool-border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    animation: fadeInUp 0.3s ease-out;
+}
+
+.activity-group-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 0.02em;
+    font-family: 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
+    padding: 11px 14px;
+    cursor: pointer;
+    text-align: left;
+    transition: background var(--transition);
+}
+
+.activity-group-header:hover {
+    background: rgba(148, 163, 184, 0.06);
+}
+
+.activity-chevron,
+.activity-group-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    opacity: 0.7;
+}
+
+.activity-chevron {
+    transition: transform var(--transition);
+}
+
+.activity-group:not(.collapsed) .activity-chevron {
+    transform: rotate(90deg);
+}
+
+.activity-group-title {
+    flex: 1;
+}
+
+.activity-group-count {
+    font-size: 10px;
+    opacity: 0.7;
+    background: rgba(148, 163, 184, 0.12);
+    padding: 2px 8px;
+    border-radius: 999px;
+    flex-shrink: 0;
+}
+
+.activity-group-body {
+    padding: 4px 8px 8px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    border-top: 1px solid var(--tool-border);
+    animation: fadeIn 0.2s ease-out;
+}
+
+.activity-group.collapsed .activity-group-body {
+    display: none;
+}
+
+/* Individual step inside an activity group */
+.activity-item {
+    background: rgba(15, 23, 42, 0.25);
+    border: 1px solid var(--tool-border);
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    font-family: 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
+    overflow: hidden;
+}
+
+.activity-item .tool-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 11px;
+    font-family: inherit;
+    padding: 9px 12px;
+    cursor: pointer;
+    text-align: left;
+    transition: background var(--transition);
+}
+
+.activity-item.tool-call .tool-label { color: var(--accent, #818cf8); }
+.activity-item.tool-result .tool-label { color: var(--success); }
+.activity-item.query .tool-label { color: #f0abfc; }
+
+.activity-item .tool-label:hover {
+    background: rgba(148, 163, 184, 0.06);
+}
+
+.activity-item .tool-label.no-body {
+    cursor: default;
+}
+
+.activity-item .tool-label.no-body:hover {
+    background: none;
+}
+
+.activity-item .tool-label.no-body .tool-chevron {
+    visibility: hidden;
+}
+
+.activity-item .tool-chevron {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: transform var(--transition);
+    opacity: 0.7;
+}
+
+.activity-item:not(.collapsed) .tool-chevron {
+    transform: rotate(90deg);
+}
+
+.activity-item .tool-label-text {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.activity-item .tool-body {
+    padding: 10px 12px 12px 12px;
+    color: var(--text-secondary);
+    white-space: pre-wrap;
+    word-break: break-word;
+    border-top: 1px solid var(--tool-border);
+    max-height: 360px;
+    overflow: auto;
+    animation: fadeIn 0.2s ease-out;
+}
+
+.activity-item.collapsed .tool-body {
+    display: none;
+}
+
+.activity-item .code-lang {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: #f0abfc;
+    background: rgba(240, 171, 252, 0.12);
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-bottom: 8px;
+}
+
+.activity-item .code-block {
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: var(--text-primary);
+    font-family: 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
+    font-size: 12px;
+    line-height: 1.5;
 }
 
 .message.error {

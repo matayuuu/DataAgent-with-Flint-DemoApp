@@ -114,13 +114,14 @@ class AgentRunner:
         compile_tools = [n for n in tool_full_names if n.endswith("__compile_chart")]
         if compile_tools:
             chart_hint = (
-                "When the user asks for a chart, graph, MAP (地図/マップ), or choropleth, "
-                "call the `compile_chart` tool with `backend` set to \"vegalite\". It returns "
-                "a Vega-Lite specification that this playground renders as an interactive chart. "
-                "Vega-Lite natively supports geographic maps: use chartType \"Map\" for a "
-                "bubble/symbol map (channels: longitude, latitude, color, size) and \"Choropleth\" "
-                "for filled regions (channels: id, color, detail). "
-                "Do NOT use `render_chart` (static PNG) or `create_chart_view` (text only) for display."
+                "To display a chart, graph, or map, use the `compile_chart` tool with "
+                "`backend` set to \"vegalite\". It returns a Vega-Lite specification that "
+                "this playground renders as an interactive chart. Vega-Lite natively "
+                "supports geographic maps: use chartType \"Map\" for a bubble/symbol map "
+                "(channels: longitude, latitude, color, size) and \"Choropleth\" for "
+                "filled regions (channels: id, color, detail). When the data covers only "
+                "Japan, keep the map focused on Japan. Do NOT use `render_chart` (static "
+                "PNG) or `create_chart_view` (text only) for display."
             )
             combined_system = (combined_system + "\n\n" + chart_hint).strip()
 
@@ -193,7 +194,7 @@ class AgentRunner:
                 yield {
                     "type": "tool_result",
                     "tool_name": func_name,
-                    "result": result_text[:500] if len(result_text) > 500 else result_text,
+                    "result": result_text[:4000] if len(result_text) > 4000 else result_text,
                 }
 
                 if vegalite_spec is not None:
