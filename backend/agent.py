@@ -115,13 +115,21 @@ class AgentRunner:
         compile_tools = [n for n in tool_full_names if n.endswith("__compile_chart")]
         if compile_tools:
             chart_hint = (
-                "When the user asks for a chart, graph, MAP (地図/マップ), or choropleth, "
-                "call the `compile_chart` tool with `backend` set to \"vegalite\". It returns "
-                "a Vega-Lite specification that this playground renders as an interactive chart. "
-                "Vega-Lite natively supports geographic maps: use chartType \"Map\" for a "
-                "bubble/symbol map (channels: longitude, latitude, color, size) and \"Choropleth\" "
-                "for filled regions (channels: id, color, detail). "
-                "Do NOT use `render_chart` (static PNG) or `create_chart_view` (text only) for display."
+                "This app is a data analysis and visualization playground. For EVERY "
+                "data question follow this flow: (1) obtain the data (call a data agent "
+                "tool if one is available), then (2) ALWAYS visualize the result by "
+                "calling the `compile_chart` tool with `backend` set to \"vegalite\". "
+                "Visualize even when the user did not explicitly ask for a chart, and "
+                "even after you already have the numbers as text. Never end your turn "
+                "with only a table or plain text when `compile_chart` is available. "
+                "`compile_chart` returns a Vega-Lite specification that this playground "
+                "renders as an interactive chart. Pick the chart type that best fits the "
+                "data. Vega-Lite natively supports geographic maps: use chartType \"Map\" "
+                "for a bubble/symbol map (channels: longitude, latitude, color, size) and "
+                "\"Choropleth\" for filled regions (channels: id, color, detail). When the "
+                "data covers only Japan, keep the map focused on Japan (do not show the "
+                "whole world). Do NOT use `render_chart` (static PNG) or "
+                "`create_chart_view` (text only) for display."
             )
             combined_system = (combined_system + "\n\n" + chart_hint).strip()
 
