@@ -175,10 +175,10 @@ function handleStreamEvent(event, typingEl) {
             appendMessage('assistant', event.content);
             break;
         case 'tool_call':
-            appendMessage('tool-call', `🔧 Tool Call: ${event.tool_name}\n${JSON.stringify(event.arguments, null, 2)}`);
+            appendMessage('tool-call', `🔧 ${event.tool_name}\n${JSON.stringify(event.arguments, null, 2)}`);
             break;
         case 'tool_result':
-            appendMessage('tool-call', `✅ Result: ${event.tool_name}\n${typeof event.result === 'string' ? event.result : JSON.stringify(event.result, null, 2)}`);
+            appendMessage('tool-call', `✅ ${event.tool_name}\n${typeof event.result === 'string' ? event.result : JSON.stringify(event.result, null, 2)}`);
             break;
         case 'image':
             appendImageMessage(event.mimeType || 'image/png', event.data);
@@ -195,6 +195,28 @@ function handleStreamEvent(event, typingEl) {
 
 function appendMessage(type, content) {
     const container = document.getElementById('chatMessages');
+
+    if (type === 'user' || type === 'assistant') {
+        const wrapper = document.createElement('div');
+        wrapper.className = `message-wrapper ${type}-wrapper`;
+
+        const avatar = document.createElement('div');
+        avatar.className = `message-avatar ${type}-avatar`;
+        avatar.innerHTML = type === 'user'
+            ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'
+            : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>';
+
+        const msgDiv = document.createElement('div');
+        msgDiv.className = `message ${type}`;
+        msgDiv.textContent = content;
+
+        wrapper.appendChild(avatar);
+        wrapper.appendChild(msgDiv);
+        container.appendChild(wrapper);
+        scrollToBottom();
+        return msgDiv;
+    }
+
     const div = document.createElement('div');
     div.className = `message ${type}`;
 
@@ -355,12 +377,22 @@ function attachPanZoom(viewport, target) {
 
 function appendTyping() {
     const container = document.getElementById('chatMessages');
-    const div = document.createElement('div');
-    div.className = 'typing-indicator';
-    div.textContent = '考え中...';
-    container.appendChild(div);
+    const wrapper = document.createElement('div');
+    wrapper.className = 'typing-indicator';
+
+    const avatar = document.createElement('div');
+    avatar.className = 'typing-avatar';
+    avatar.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>';
+
+    const dots = document.createElement('div');
+    dots.className = 'typing-dots';
+    dots.innerHTML = '<span></span><span></span><span></span>';
+
+    wrapper.appendChild(avatar);
+    wrapper.appendChild(dots);
+    container.appendChild(wrapper);
     scrollToBottom();
-    return div;
+    return wrapper;
 }
 
 function scrollToBottom() {

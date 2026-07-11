@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Foundry Agent Playground</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -11,13 +14,21 @@
         <!-- Sidebar -->
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <h2>⚙️ 設定</h2>
-                <button class="btn-icon" id="toggleSidebar" title="サイドバーを閉じる">✕</button>
+                <div class="sidebar-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    <h2>設定</h2>
+                </div>
+                <button class="btn-icon" id="toggleSidebar" title="サイドバーを閉じる">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
             </div>
 
             <!-- Model Selection -->
             <section class="setting-section">
-                <h3>モデル</h3>
+                <h3>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                    モデル
+                </h3>
                 <select id="modelSelect" class="input-full">
                     <option value="">読み込み中...</option>
                 </select>
@@ -25,7 +36,10 @@
 
             <!-- System Prompt -->
             <section class="setting-section">
-                <h3>システムプロンプト</h3>
+                <h3>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+                    システムプロンプト
+                </h3>
                 <textarea id="systemPrompt" class="input-full" rows="6" 
                     placeholder="エージェントの振る舞いを定義するシステムプロンプトを入力..."></textarea>
             </section>
@@ -33,8 +47,12 @@
             <!-- MCP Servers -->
             <section class="setting-section">
                 <h3>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
                     MCP サーバー
-                    <button class="btn-small" id="addMcpBtn" title="MCPサーバーを追加">＋ 追加</button>
+                    <button class="btn-add" id="addMcpBtn" title="MCPサーバーを追加">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        追加
+                    </button>
                 </h3>
                 <div id="mcpServerList" class="mcp-server-list">
                     <!-- Populated dynamically -->
@@ -45,16 +63,41 @@
         <!-- Main Chat Area -->
         <main class="main">
             <header class="main-header">
-                <button class="btn-icon" id="openSidebar" title="設定を開く">☰</button>
-                <h1>Foundry Agent Playground</h1>
+                <button class="btn-icon" id="openSidebar" title="設定を開く">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                </button>
+                <div class="header-title-group">
+                    <h1>Foundry Agent Playground</h1>
+                    <span class="header-subtitle">AI-powered data exploration</span>
+                </div>
                 <div class="header-tools" id="activeTools"></div>
             </header>
 
             <div class="chat-container" id="chatContainer">
                 <div class="chat-messages" id="chatMessages">
                     <div class="welcome-message">
-                        <h2>👋 ようこそ</h2>
-                        <p>Foundry Agent Playgroundへようこそ。左の設定パネルでモデル、システムプロンプト、MCPサーバーを設定してチャットを開始してください。</p>
+                        <div class="welcome-icon">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="url(#grad)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <defs><linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#818cf8"/><stop offset="100%" style="stop-color:#c084fc"/></linearGradient></defs>
+                                <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>
+                            </svg>
+                        </div>
+                        <h2>ようこそ</h2>
+                        <p>Foundry Agent Playgroundへようこそ。<br>左の設定パネルでモデル、システムプロンプト、MCPサーバーを設定してチャットを開始してください。</p>
+                        <div class="welcome-hints">
+                            <div class="hint-chip">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                                自然言語でデータを探索
+                            </div>
+                            <div class="hint-chip">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
+                                チャートを自動生成
+                            </div>
+                            <div class="hint-chip">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+                                MCPサーバーと連携
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -62,7 +105,9 @@
             <div class="chat-input-area">
                 <div class="chat-input-wrapper">
                     <textarea id="chatInput" placeholder="メッセージを入力..." rows="1"></textarea>
-                    <button id="sendBtn" class="btn-send" title="送信">▶</button>
+                    <button id="sendBtn" class="btn-send" title="送信">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                    </button>
                 </div>
             </div>
         </main>
@@ -73,7 +118,9 @@
         <div class="modal">
             <div class="modal-header">
                 <h3 id="mcpModalTitle">MCPサーバーを追加</h3>
-                <button class="btn-icon" id="closeMcpModal">✕</button>
+                <button class="btn-icon" id="closeMcpModal">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
             </div>
             <div class="modal-body">
                 <div class="form-group">
