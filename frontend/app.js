@@ -12,9 +12,14 @@ let state = {
     editingServerId: null,
 };
 
+// Captured on load so the welcome screen can be restored after clearing.
+let WELCOME_HTML = '';
+
 // --- Initialization ---
 
 document.addEventListener('DOMContentLoaded', () => {
+    const welcome = document.querySelector('.welcome-message');
+    if (welcome) WELCOME_HTML = welcome.outerHTML;
     initUI();
     loadModels();
     loadMCPServers();
@@ -40,6 +45,9 @@ function initUI() {
     chatInput.addEventListener('input', autoResize);
     document.getElementById('sendBtn').addEventListener('click', sendMessage);
 
+    // Clear chat
+    document.getElementById('clearChatBtn').addEventListener('click', clearChat);
+
     // MCP Modal
     document.getElementById('addMcpBtn').addEventListener('click', () => openMcpModal());
     document.getElementById('closeMcpModal').addEventListener('click', closeMcpModal);
@@ -53,6 +61,14 @@ function autoResize() {
     const el = document.getElementById('chatInput');
     el.style.height = 'auto';
     el.style.height = Math.min(el.scrollHeight, 150) + 'px';
+}
+
+function clearChat() {
+    if (state.isStreaming) return;
+    if (state.messages.length && !confirm('チャット履歴をクリアしますか？')) return;
+    state.messages = [];
+    const container = document.getElementById('chatMessages');
+    container.innerHTML = WELCOME_HTML;
 }
 
 // --- Models ---
