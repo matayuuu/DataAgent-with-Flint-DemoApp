@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Foundry Agent Playground</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h2>⚙️ 設定</h2>
+                <button class="btn-icon" id="toggleSidebar" title="サイドバーを閉じる">✕</button>
+            </div>
+
+            <!-- Model Selection -->
+            <section class="setting-section">
+                <h3>モデル</h3>
+                <select id="modelSelect" class="input-full">
+                    <option value="">読み込み中...</option>
+                </select>
+            </section>
+
+            <!-- System Prompt -->
+            <section class="setting-section">
+                <h3>システムプロンプト</h3>
+                <textarea id="systemPrompt" class="input-full" rows="6" 
+                    placeholder="エージェントの振る舞いを定義するシステムプロンプトを入力..."></textarea>
+            </section>
+
+            <!-- MCP Servers -->
+            <section class="setting-section">
+                <h3>
+                    MCP サーバー
+                    <button class="btn-small" id="addMcpBtn" title="MCPサーバーを追加">＋ 追加</button>
+                </h3>
+                <div id="mcpServerList" class="mcp-server-list">
+                    <!-- Populated dynamically -->
+                </div>
+            </section>
+        </aside>
+
+        <!-- Main Chat Area -->
+        <main class="main">
+            <header class="main-header">
+                <button class="btn-icon" id="openSidebar" title="設定を開く">☰</button>
+                <h1>Foundry Agent Playground</h1>
+                <div class="header-tools" id="activeTools"></div>
+            </header>
+
+            <div class="chat-container" id="chatContainer">
+                <div class="chat-messages" id="chatMessages">
+                    <div class="welcome-message">
+                        <h2>👋 ようこそ</h2>
+                        <p>Foundry Agent Playgroundへようこそ。左の設定パネルでモデル、システムプロンプト、MCPサーバーを設定してチャットを開始してください。</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chat-input-area">
+                <div class="chat-input-wrapper">
+                    <textarea id="chatInput" placeholder="メッセージを入力..." rows="1"></textarea>
+                    <button id="sendBtn" class="btn-send" title="送信">▶</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- MCP Server Modal -->
+    <div class="modal-overlay" id="mcpModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="mcpModalTitle">MCPサーバーを追加</h3>
+                <button class="btn-icon" id="closeMcpModal">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>名前</label>
+                    <input type="text" id="mcpName" class="input-full" placeholder="例: Flint Chart">
+                </div>
+                <div class="form-group">
+                    <label>トランスポート</label>
+                    <select id="mcpTransport" class="input-full">
+                        <option value="stdio">Stdio (ローカル)</option>
+                        <option value="sse">SSE (リモート)</option>
+                        <option value="streamable_http">Streamable HTTP (リモート)</option>
+                    </select>
+                </div>
+                <!-- Stdio fields -->
+                <div id="stdioFields">
+                    <div class="form-group">
+                        <label>コマンド</label>
+                        <input type="text" id="mcpCommand" class="input-full" placeholder="例: npx">
+                    </div>
+                    <div class="form-group">
+                        <label>引数 (カンマ区切り)</label>
+                        <input type="text" id="mcpArgs" class="input-full" placeholder="例: -y,flint-chart-mcp">
+                    </div>
+                </div>
+                <!-- SSE / Streamable HTTP fields -->
+                <div id="httpFields" style="display:none;">
+                    <div class="form-group">
+                        <label>URL</label>
+                        <input type="text" id="mcpUrl" class="input-full" placeholder="例: https://api.fabric.microsoft.com/v1/mcp/workspaces/{id}/dataagents/{id}/agent">
+                    </div>
+                    <div class="form-group">
+                        <label>認証</label>
+                        <select id="mcpAuthType" class="input-full">
+                            <option value="none">なし</option>
+                            <option value="azure_cli">Azure CLI (az login)</option>
+                        </select>
+                    </div>
+                    <div id="authScopeField" style="display:none;">
+                        <div class="form-group">
+                            <label>認証スコープ</label>
+                            <input type="text" id="mcpAuthScope" class="input-full" value="https://api.fabric.microsoft.com/.default" placeholder="https://api.fabric.microsoft.com/.default">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>追加ヘッダー (JSON、任意)</label>
+                        <textarea id="mcpHeaders" class="input-full" rows="2" placeholder='{"X-Custom": "value"}'></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" id="cancelMcpModal">キャンセル</button>
+                <button class="btn-primary" id="saveMcpModal">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/vega@5.30.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-lite@5.21.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-embed@6.26.0"></script>
+    <script src="app.js"></script>
+</body>
+</html>

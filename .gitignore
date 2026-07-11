@@ -1,0 +1,8 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+
+# User-specific MCP server config (contains personal Fabric workspace / data agent IDs).
+# A sanitized template is provided as mcp_servers.example.json.
+mcp_servers.json

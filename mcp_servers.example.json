@@ -1,0 +1,18 @@
+[
+  {
+    "id": "flint",
+    "name": "Flint Chart",
+    "transport": "stdio",
+    "command": "npx",
+    "args": [
+      "-y",
+      "flint-chart-mcp"
+    ],
+    "env": {},
+    "url": "",
+    "headers": {},
+    "auth_type": "none",
+    "auth_scope": "",
+    "enabled": true
+  }
+]
