@@ -2,6 +2,7 @@
 
 import json
 import logging
+import re
 from typing import Any, AsyncGenerator
 
 from azure.identity import DefaultAzureCredential
@@ -124,6 +125,24 @@ class AgentRunner:
             )
             combined_system = (combined_system + "\n\n" + chart_hint).strip()
 
+        # If a data-agent style tool is available (e.g. Fabric Data Agent),
+        # ask the model to have it surface the exact query it executed so the
+        # playground can display it. Heuristic: any non-Flint remote tool.
+        data_agent_tools = [
+            n for n in tool_full_names
+            if not n.endswith("__compile_chart")
+            and ("dataagent" in n.lower() or "data_agent" in n.lower()
+                 or "fabric" in n.lower() or "ask" in n.lower() or "query" in n.lower())
+        ]
+        if data_agent_tools:
+            data_agent_hint = (
+                "When you call a data agent tool (e.g. Fabric Data Agent), explicitly ask it "
+                "to include the exact SQL / DAX / KQL query it executed in its answer, wrapped "
+                "in a fenced code block (```sql ... ```). This playground shows the executed "
+                "query to the user, so preserving it verbatim is important."
+            )
+            combined_system = (combined_system + "\n\n" + data_agent_hint).strip()
+
         if combined_system:
             full_messages.append({"role": "system", "content": combined_system})
         full_messages.extend(messages)
@@ -190,10 +209,21 @@ class AgentRunner:
                 # UI can render it as an interactive chart via vega-embed.
                 vegalite_spec = self._extract_vegalite_spec(result_text)
 
+                # Surface any executed queries (SQL / DAX / KQL) that a data
+                # agent (e.g. Fabric Data Agent) embedded in its answer so the
+                # playground can display what was actually run.
+                for q in self._extract_queries(result_text):
+                    yield {
+                        "type": "query",
+                        "tool_name": func_name,
+                        "language": q["language"],
+                        "query": q["query"],
+                    }
+
                 yield {
                     "type": "tool_result",
                     "tool_name": func_name,
-                    "result": result_text[:500] if len(result_text) > 500 else result_text,
+                    "result": result_text[:4000] if len(result_text) > 4000 else result_text,
                 }
 
                 if vegalite_spec is not None:
@@ -233,6 +263,61 @@ class AgentRunner:
                 })
 
         yield {"type": "error", "content": "Max tool call iterations reached"}
+
+    def _extract_queries(self, text: str) -> list[dict[str, str]]:
+        """Extract executed queries (SQL / DAX / KQL) embedded in a tool result.
+
+        Fabric Data Agent returns its answer as text and commonly includes the
+        query it ran as a fenced code block (```sql ... ```). We surface those
+        so the playground can show what was actually executed. Falls back to
+        detecting an unlabeled block that looks like SQL.
+        """
+        if not text:
+            return []
+
+        queries: list[dict[str, str]] = []
+        seen: set[str] = set()
+
+        lang_map = {
+            "sql": "sql",
+            "tsql": "sql",
+            "t-sql": "sql",
+            "dax": "dax",
+            "kql": "kql",
+            "kusto": "kql",
+        }
+
+        # Labeled fenced code blocks: ```sql ... ```
+        fence = re.compile(r"```([a-zA-Z\-]*)\s*\n(.*?)```", re.DOTALL)
+        for m in fence.finditer(text):
+            lang = (m.group(1) or "").strip().lower()
+            body = m.group(2).strip()
+            if not body:
+                continue
+            if lang in lang_map:
+                key = body
+                if key in seen:
+                    continue
+                seen.add(key)
+                queries.append({"language": lang_map[lang], "query": body})
+            elif lang == "" and self._looks_like_sql(body):
+                key = body
+                if key in seen:
+                    continue
+                seen.add(key)
+                queries.append({"language": "sql", "query": body})
+
+        return queries
+
+    @staticmethod
+    def _looks_like_sql(text: str) -> bool:
+        """Heuristic: does an unlabeled block look like a SQL/DAX query?"""
+        head = text.lstrip().upper()
+        if head.startswith(("EVALUATE", "DEFINE ")):
+            return True
+        if head.startswith(("SELECT ", "WITH ")) and "FROM" in head:
+            return True
+        return False
 
     def _extract_vegalite_spec(self, text: str) -> dict | None:
         """Parse a Flint compile_chart result and return the Vega-Lite spec.

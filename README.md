@@ -1,14 +1,18 @@
-# Foundry Agent Playground
+# Flint + Data Agent Playground
 
-Azure Foundry Agent Service の Python SDK を使用したローカル Web チャットプレイグラウンドです。
+Azure Foundry Agent Service の Python SDK を使用した、**Flint Chart** と **Fabric Data Agent** による分析・可視化デモ用のローカル Web プレイグラウンドです。
+
+MCP ツール (Flint Chart / Fabric Data Agent) の呼び出しと結果、そしてデータエージェントが実行したクエリ (SQL / DAX / KQL) をチャット上で確認しながら、対話的にデータ分析・可視化を試せます。
 
 ## 機能
 
 - **モデル選択**: Foundry プロジェクトで利用可能なモデルをプルダウンで選択
 - **システムプロンプト**: エージェントの動作を定義するシステムプロンプトを設定
 - **MCP サーバー管理**: MCP サーバーの追加・編集・削除
-  - ローカル (stdio): `npx -y flint-chart-mcp` など
-  - リモート (SSE): Fabric Data Agent など
+  - Flint Chart (プリセット済み・ローカル stdio): `npx -y flint-chart-mcp`
+  - Fabric Data Agent (追加 MCP・Streamable HTTP): データエージェントへの質問と可視化
+- **ターン単位のアクティビティ表示**: 1 ターンで発生した MCP 実行・出力・実行クエリを 1 つの折りたたみグループにまとめ、既定では非表示。展開すると各ステップを個別に開閉できます。
+- **実行クエリの可視化**: Fabric Data Agent が実行した SQL / DAX / KQL を検出し、コードブロックとして表示します。
 
 ## 前提条件
 
@@ -52,13 +56,17 @@ python main.py
 
 データの可視化やチャート生成をエージェントに依頼できます。
 
-### Fabric Data Agent (手動追加)
+### Fabric Data Agent (追加 MCP サーバー)
 
-リモート MCP サーバーとして追加:
+追加 MCP サーバーは Fabric Data Agent を前提としています。UI の「＋ 追加」を押すと、既定値が Fabric Data Agent 向け (Streamable HTTP + Azure CLI 認証) に設定されます。
+
 1. UI の「＋ 追加」をクリック
-2. トランスポート: SSE (リモート)
+2. トランスポート: Streamable HTTP (リモート) ※既定
 3. URL: Fabric Data Agent の MCP エンドポイント
-4. ヘッダー: 必要に応じて認証情報を設定
+   `https://api.fabric.microsoft.com/v1/mcp/workspaces/{WorkspaceId}/dataagents/{DataAgentId}/agent`
+4. 認証: Azure CLI ※既定 (スコープ `https://api.fabric.microsoft.com/.default`)
+
+`az login` 済みのトークンを使ってデータエージェントに接続します。エージェントが回答に含めた実行クエリ (SQL / DAX / KQL) はプレイグラウンド上で可視化されます。
 
 参考: https://learn.microsoft.com/ja-jp/fabric/data-science/data-agent-mcp-server
 
@@ -82,7 +90,7 @@ python main.py
 ┌─────────────────┐    ┌─────────────────────────┐
 │ Azure Foundry   │    │ MCP Servers             │
 │ (モデル推論)     │    │ - Flint (stdio/local)   │
-│                 │    │ - Fabric Agent (SSE)    │
+│                 │    │ - Fabric Agent (HTTP)   │
 └─────────────────┘    └─────────────────────────┘
 ```
 

@@ -111,6 +111,10 @@ async function sendMessage() {
     // Show typing indicator
     const typingEl = appendTyping();
 
+    // Per-turn context: all tool activity for this turn is grouped into a
+    // single collapsible container (created lazily on first tool event).
+    const turnCtx = { group: null, typingEl };
+
     try {
         const res = await fetch(`${API_BASE}/api/chat`, {
             method: 'POST',
@@ -142,7 +146,7 @@ async function sendMessage() {
 
                 try {
                     const event = JSON.parse(data);
-                    handleStreamEvent(event, typingEl);
+                    handleStreamEvent(event, turnCtx);
                     if (event.type === 'content') {
                         assistantContent = event.content;
                     }
@@ -168,18 +172,48 @@ async function sendMessage() {
     document.getElementById('sendBtn').disabled = false;
 }
 
-function handleStreamEvent(event, typingEl) {
+function handleStreamEvent(event, turnCtx) {
+    const typingEl = turnCtx.typingEl;
     switch (event.type) {
         case 'content':
             typingEl.remove();
             appendMessage('assistant', event.content);
             break;
-        case 'tool_call':
-            appendMessage('tool-call', `🔧 ${event.tool_name}\n${JSON.stringify(event.arguments, null, 2)}`);
+        case 'tool_call': {
+            const group = ensureActivityGroup(turnCtx);
+            appendActivityItem(group, {
+                title: `🔧 ${event.tool_name} を実行`,
+                variant: 'tool-call',
+                bodyText: JSON.stringify(event.arguments, null, 2),
+            });
+            keepTypingLast(turnCtx);
             break;
-        case 'tool_result':
-            appendMessage('tool-call', `✅ ${event.tool_name}\n${typeof event.result === 'string' ? event.result : JSON.stringify(event.result, null, 2)}`);
+        }
+        case 'query': {
+            const group = ensureActivityGroup(turnCtx);
+            const lang = (event.language || 'sql');
+            appendActivityItem(group, {
+                title: `📊 実行クエリ (${lang.toUpperCase()})`,
+                variant: 'query',
+                bodyText: event.query || '',
+                codeLang: lang,
+            });
+            keepTypingLast(turnCtx);
             break;
+        }
+        case 'tool_result': {
+            const group = ensureActivityGroup(turnCtx);
+            const txt = typeof event.result === 'string'
+                ? event.result
+                : JSON.stringify(event.result, null, 2);
+            appendActivityItem(group, {
+                title: `✅ ${event.tool_name} の結果`,
+                variant: 'tool-result',
+                bodyText: txt,
+            });
+            keepTypingLast(turnCtx);
+            break;
+        }
         case 'image':
             appendImageMessage(event.mimeType || 'image/png', event.data);
             break;
@@ -190,6 +224,99 @@ function handleStreamEvent(event, typingEl) {
             typingEl.remove();
             appendMessage('error', event.content);
             break;
+    }
+}
+
+// Lazily create the per-turn activity group (collapsed by default). It holds
+// every MCP execution / output / query for a single turn behind one toggle.
+function ensureActivityGroup(turnCtx) {
+    if (turnCtx.group) return turnCtx.group;
+
+    const container = document.getElementById('chatMessages');
+    const group = document.createElement('div');
+    group.className = 'activity-group collapsed';
+
+    const header = document.createElement('button');
+    header.type = 'button';
+    header.className = 'activity-group-header';
+    header.innerHTML =
+        '<span class="activity-chevron"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>' +
+        '<span class="activity-group-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></span>' +
+        '<span class="activity-group-title">処理の詳細</span>' +
+        '<span class="activity-group-count">0 ステップ</span>';
+
+    const body = document.createElement('div');
+    body.className = 'activity-group-body';
+
+    header.addEventListener('click', () => group.classList.toggle('collapsed'));
+
+    group.appendChild(header);
+    group.appendChild(body);
+    container.appendChild(group);
+
+    group._body = body;
+    group._count = 0;
+    group._countEl = header.querySelector('.activity-group-count');
+
+    turnCtx.group = group;
+    return group;
+}
+
+// Append one collapsible step (tool call / result / query) into a group.
+function appendActivityItem(group, opts) {
+    const item = document.createElement('div');
+    item.className = `activity-item ${opts.variant} collapsed`;
+
+    const label = document.createElement('button');
+    label.type = 'button';
+    label.className = 'tool-label';
+
+    const chevron = document.createElement('span');
+    chevron.className = 'tool-chevron';
+    chevron.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>';
+
+    const labelText = document.createElement('span');
+    labelText.className = 'tool-label-text';
+    labelText.textContent = opts.title;
+
+    label.appendChild(chevron);
+    label.appendChild(labelText);
+    item.appendChild(label);
+
+    if (opts.bodyText) {
+        const body = document.createElement('div');
+        body.className = 'tool-body';
+        if (opts.codeLang) {
+            const langTag = document.createElement('div');
+            langTag.className = 'code-lang';
+            langTag.textContent = opts.codeLang.toUpperCase();
+            const pre = document.createElement('pre');
+            pre.className = 'code-block';
+            pre.textContent = opts.bodyText;
+            body.appendChild(langTag);
+            body.appendChild(pre);
+        } else {
+            body.textContent = opts.bodyText;
+        }
+        item.appendChild(body);
+        label.addEventListener('click', () => item.classList.toggle('collapsed'));
+    } else {
+        label.classList.add('no-body');
+    }
+
+    group._body.appendChild(item);
+    group._count++;
+    group._countEl.textContent = `${group._count} ステップ`;
+    scrollToBottom();
+    return item;
+}
+
+// Keep the typing indicator visually below the activity group while streaming.
+function keepTypingLast(turnCtx) {
+    const el = turnCtx.typingEl;
+    if (el && el.parentNode) {
+        el.parentNode.appendChild(el);
+        scrollToBottom();
     }
 }
 
@@ -524,12 +651,13 @@ function openMcpModal(serverId = null) {
         document.getElementById('mcpHeaders').value = server.headers ? JSON.stringify(server.headers, null, 2) : '';
     } else {
         title.textContent = 'MCPサーバーを追加';
-        document.getElementById('mcpName').value = '';
-        document.getElementById('mcpTransport').value = 'stdio';
+        // Default new servers to Fabric Data Agent (streamable_http + Azure CLI auth)
+        document.getElementById('mcpName').value = 'Fabric Data Agent';
+        document.getElementById('mcpTransport').value = 'streamable_http';
         document.getElementById('mcpCommand').value = '';
         document.getElementById('mcpArgs').value = '';
         document.getElementById('mcpUrl').value = '';
-        document.getElementById('mcpAuthType').value = 'none';
+        document.getElementById('mcpAuthType').value = 'azure_cli';
         document.getElementById('mcpAuthScope').value = 'https://api.fabric.microsoft.com/.default';
         document.getElementById('mcpHeaders').value = '';
     }
