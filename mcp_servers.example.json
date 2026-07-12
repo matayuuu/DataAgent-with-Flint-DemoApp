@@ -14,5 +14,18 @@
     "auth_type": "none",
     "auth_scope": "",
     "enabled": true
+  },
+  {
+    "id": "fabric-data-agent",
+    "name": "Fabric Data Agent",
+    "transport": "streamable_http",
+    "command": "",
+    "args": [],
+    "env": {},
+    "url": "https://api.fabric.microsoft.com/v1/mcp/workspaces/{WorkspaceId}/dataagents/{DataAgentId}/agent",
+    "headers": {},
+    "auth_type": "azure_cli",
+    "auth_scope": "https://api.fabric.microsoft.com/.default",
+    "enabled": false
   }
 ]

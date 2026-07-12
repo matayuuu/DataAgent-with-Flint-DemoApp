@@ -17,6 +17,7 @@
 - Node.js 18+（Flint MCP の `npx` 用）
 - Azure CLI（`az login` 済み）
 - Microsoft Foundry プロジェクト（モデルをデプロイ済み）
+- **公開済み（published）の Fabric Data Agent**
 
 ## クイックスタート
 
@@ -35,6 +36,8 @@ python main.py
 起動後、ブラウザで http://localhost:8000 を開きます。
 
 ## Fabric Data Agent を追加する
+
+`mcp_servers.example.json` には Fabric Data Agent のエントリを `enabled: false`・プレースホルダ URL の雛形として同梱しています。**公開済み（published）の Data Agent** の URL に置き換えて有効化するか、以下の手順で UI から追加してください。
 
 左の設定パネルの「＋ 追加」を押します。
 
