@@ -36,22 +36,29 @@ python main.py
 起動後、ブラウザで http://localhost:8000 を開きます。
 
 ## Fabric Data Agent を追加する
-以下の手順で UI から追加してください。
 
-1. 左の設定パネルの「＋ 追加」を押します。
-2. 以下の項目を入力
-    - トランスポート：**Streamable HTTP**
-    - URL：「**ご自身の Fabric Data Agent MCP エンドポイント**」
-    - 認証：**Azure CLI**
+公開済み（published）の Fabric Data Agent を、UI から MCP サーバーとして登録します。
 
-```
-https://api.fabric.microsoft.com/v1/mcp/workspaces/{WorkspaceId}/dataagents/{DataAgentId}/agent
-```
+1. 左の設定パネルの **「＋ 追加」** をクリックします。
+2. 「MCP サーバーを追加」ダイアログで以下を入力し、**保存**します。
 
-`az login` のトークン（スコープ `https://api.fabric.microsoft.com/.default`）で接続します。
-詳細: https://learn.microsoft.com/ja-jp/fabric/data-science/data-agent-mcp-server
+    | 項目 | 値 |
+    | --- | --- |
+    | トランスポート | **Streamable HTTP** |
+    | URL | ご自身の Fabric Data Agent MCP エンドポイント（下記の構成） |
+    | 認証 | **Azure CLI** |
 
-![MCP サーバーを追加する画面](docs/images/03-add-mcp-modal.png)
+    ```
+    https://api.fabric.microsoft.com/v1/mcp/workspaces/{WorkspaceId}/dataagents/{DataAgentId}/agent
+    ```
+
+    `{WorkspaceId}` と `{DataAgentId}` はご自身のワークスペース／Data Agent の ID に置き換えてください。
+
+![MCP サーバーを追加する画面](docs/images/01-add-mcp-modal.png)
+
+接続には `az login` で取得したトークン（スコープ `https://api.fabric.microsoft.com/.default`）を使用します。事前に `az login` を済ませ、対象ワークスペースへのアクセス権があることを確認してください。
+
+> 📖 詳細は公式ドキュメント [Data agent as MCP server](https://learn.microsoft.com/ja-jp/fabric/data-science/data-agent-mcp-server) を参照してください。
 
 ## 仕組み
 
