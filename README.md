@@ -72,7 +72,9 @@ FastAPI バックエンド  ──►  Microsoft Foundry（モデル推論）
 
 データについて質問すると、Fabric Data Agent が集計し、Flint がグラフを描画します。
 
-![デモ: 月別売上の分析と可視化](docs/images/demo.gif)
+<video src="https://github.com/matayuuu/DataAgent-with-Flint-DemoApp/raw/main/docs/videos/demo.mp4" controls muted playsinline width="760"></video>
+
+> 動画が再生されない場合は [docs/videos/demo.mp4](docs/videos/demo.mp4) をご覧ください。
 
 ## ライセンス
 
